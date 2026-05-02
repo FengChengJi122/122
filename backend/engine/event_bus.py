@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Coroutine, Dict, List, Optional
 
@@ -23,7 +24,7 @@ class Event:
     type: str
     data: Any = None
     source: Optional[str] = None
-    timestamp: float = field(default_factory=lambda: asyncio.get_event_loop().time())
+    timestamp: float = field(default_factory=lambda: time.monotonic())
 
 
 # A handler can be any callable that accepts a single Event argument.

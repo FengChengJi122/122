@@ -247,7 +247,7 @@ async def _impl_update_mood(
 
 
 async def _impl_execute_narrative_task(
-    npc_id: str, task_id: str, payload: dict = None
+    npc_id: str, task_id: str, payload: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     logger.info("[%s] execute_narrative_task(%s)", npc_id, task_id)
     return {

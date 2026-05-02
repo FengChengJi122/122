@@ -28,12 +28,22 @@ const AVATAR_EMOJI = {
 // ==========================================================================
 // State
 // ==========================================================================
+// State — use Object.create(null) to prevent prototype pollution via
+// server-controlled npc_id keys.
+// ==========================================================================
 const state = {
   ws: null,
   connected: false,
-  agents: {},          // npc_id → agent data
-  bubbleTimers: {},    // npc_id → setTimeout handle
+  agents: Object.create(null),      // npc_id → agent data
+  bubbleTimers: Object.create(null), // npc_id → setTimeout handle
 };
+
+// Validate that an npc_id is a safe, slug-like identifier.
+function safeNpcId(npc_id) {
+  if (typeof npc_id !== "string") return null;
+  if (!/^[a-zA-Z0-9_-]{1,64}$/.test(npc_id)) return null;
+  return npc_id;
+}
 
 // ==========================================================================
 // DOM references
@@ -131,7 +141,9 @@ function handleServerMessage(msg) {
 // Agent management
 // ==========================================================================
 function syncAgents(agents) {
-  const incoming = new Set(agents.map((a) => a.npc_id));
+  const incoming = new Set(
+    agents.map((a) => safeNpcId(a.npc_id)).filter(Boolean)
+  );
   // Remove stale agents.
   for (const id of Object.keys(state.agents)) {
     if (!incoming.has(id)) removeAgent(id);
@@ -142,19 +154,35 @@ function syncAgents(agents) {
 }
 
 function upsertAgent(data) {
-  const { npc_id } = data;
+  const npc_id = safeNpcId(data.npc_id);
+  if (!npc_id) return; // Reject invalid IDs.
+
+  // Copy only known-safe properties — never blind-assign server data.
+  const safe = {
+    npc_id:   String(data.npc_id  ?? ""),
+    name:     String(data.name    ?? npc_id),
+    avatar:   String(data.avatar  ?? "default"),
+    mood:     String(data.mood    ?? "neutral"),
+    position: data.position && typeof data.position === "object"
+                ? { x: Number(data.position.x) || 50, y: Number(data.position.y) || 75 }
+                : { x: 50, y: 75 },
+    state:    String(data.state   ?? "idle"),
+  };
+
   if (!state.agents[npc_id]) {
-    state.agents[npc_id] = data;
-    createNPCElement(data);
-    addTargetOption(npc_id, data.name);
+    state.agents[npc_id] = safe;
+    createNPCElement(safe);
+    addTargetOption(npc_id, safe.name);
   } else {
-    Object.assign(state.agents[npc_id], data);
-    updateNPCElement(data);
+    Object.assign(state.agents[npc_id], safe);
+    updateNPCElement(safe);
   }
   updateAgentCount();
 }
 
-function removeAgent(npc_id) {
+function removeAgent(raw_npc_id) {
+  const npc_id = safeNpcId(raw_npc_id);
+  if (!npc_id) return;
   delete state.agents[npc_id];
   const el = document.getElementById(`npc-${npc_id}`);
   if (el) el.remove();
@@ -245,15 +273,17 @@ function updateStateBadge(npc_id, npcState) {
 }
 
 function showSpeechBubble(npc_id, text) {
-  const bubble = $(`bubble-${npc_id}`);
+  const safe = safeNpcId(npc_id);
+  if (!safe) return;
+  const bubble = $(`bubble-${safe}`);
   if (!bubble) return;
 
   bubble.textContent = text;
   bubble.classList.add("visible");
 
   // Clear any existing timer.
-  clearTimeout(state.bubbleTimers[npc_id]);
-  state.bubbleTimers[npc_id] = setTimeout(() => {
+  clearTimeout(state.bubbleTimers[safe]);
+  state.bubbleTimers[safe] = setTimeout(() => {
     bubble.classList.remove("visible");
   }, BUBBLE_DURATION_MS);
 }
@@ -262,7 +292,13 @@ function showSpeechBubble(npc_id, text) {
 // Event handlers (from server)
 // ==========================================================================
 function onNPCResponse(data) {
-  const { npc_id, name, text, mood, position, state: npcState } = data;
+  const npc_id = safeNpcId(data.npc_id);
+  if (!npc_id) return;
+  const name     = String(data.name     ?? npc_id);
+  const text     = String(data.text     ?? "");
+  const mood     = String(data.mood     ?? "neutral");
+  const position = data.position && typeof data.position === "object" ? data.position : null;
+  const npcState = String(data.state    ?? "idle");
 
   if (text) {
     showSpeechBubble(npc_id, text);
@@ -273,18 +309,22 @@ function onNPCResponse(data) {
     if (npc) npc.dataset.mood = mood;
   }
   if (position) positionNPC(npc_id, position);
-  updateStateBadge(npc_id, npcState || "idle");
-}
-
-function onNPCStateChanged(data) {
-  const { npc_id, state: npcState } = data;
   updateStateBadge(npc_id, npcState);
 }
 
+function onNPCStateChanged(data) {
+  const npc_id = safeNpcId(data.npc_id);
+  if (!npc_id) return;
+  updateStateBadge(npc_id, String(data.state ?? "idle"));
+}
+
 function onNPCAction(data) {
-  const { npc_id, action, args } = data;
-  const agent = state.agents[npc_id];
-  const name  = agent ? agent.name : npc_id;
+  const npc_id = safeNpcId(data.npc_id);
+  if (!npc_id) return;
+  const action = String(data.action ?? "");
+  const args   = data.args && typeof data.args === "object" ? data.args : {};
+  const agent  = state.agents[npc_id];
+  const name   = agent ? agent.name : npc_id;
 
   // Handle positional moves.
   if (action === "move_to" && args) {
@@ -301,7 +341,9 @@ function onNPCAction(data) {
 }
 
 function onNPCMoodChanged(data) {
-  const { npc_id, mood } = data;
+  const npc_id = safeNpcId(data.npc_id);
+  if (!npc_id) return;
+  const mood = String(data.mood ?? "neutral");
   const npc = document.getElementById(`npc-${npc_id}`);
   if (npc) npc.dataset.mood = mood;
   if (state.agents[npc_id]) state.agents[npc_id].mood = mood;
