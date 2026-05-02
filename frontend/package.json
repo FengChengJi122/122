@@ -1,0 +1,16 @@
+{
+  "name": "cyberpunk-companion",
+  "version": "1.0.0",
+  "description": "AI-driven Multi-Agent Cyberpunk Desktop Companion",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "keywords": ["ai", "npc", "multi-agent", "cyberpunk", "desktop"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0"
+  }
+}

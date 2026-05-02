@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cyberpunk Companion</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- ================================================================
+       TOP BAR — connection status + controls
+  ================================================================ -->
+  <div id="top-bar">
+    <span class="brand">⬡ COMPANION OS</span>
+    <div class="status-row">
+      <span id="connection-dot" class="dot disconnected"></span>
+      <span id="connection-label">DISCONNECTED</span>
+      <span id="agent-count">0 AGENTS</span>
+    </div>
+    <button id="btn-quit" title="Quit">✕</button>
+  </div>
+
+  <!-- ================================================================
+       DESKTOP CANVAS — NPC sprites live here
+  ================================================================ -->
+  <div id="canvas">
+    <!-- NPC elements are injected dynamically by app.js -->
+  </div>
+
+  <!-- ================================================================
+       CHAT PANEL — collapsible side panel
+  ================================================================ -->
+  <div id="chat-panel" class="collapsed">
+    <button id="chat-toggle" title="Toggle chat">💬</button>
+
+    <div id="chat-inner">
+      <div id="chat-header">
+        <span>COMM CHANNEL</span>
+        <select id="target-select">
+          <option value="">— BROADCAST —</option>
+        </select>
+      </div>
+
+      <div id="chat-log"></div>
+
+      <div id="chat-input-row">
+        <input
+          id="chat-input"
+          type="text"
+          placeholder="TRANSMIT MESSAGE…"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button id="send-btn">▶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       NOTIFICATION AREA
+  ================================================================ -->
+  <div id="notifications"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
