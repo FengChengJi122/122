@@ -152,8 +152,9 @@ def test_can_transition_to(fsm):
     assert not fsm.can_transition_to(NPCState.RESPONDING)
 
 
-def test_history_records_all_transitions(fsm):
-    asyncio.get_event_loop().run_until_complete(_run_transitions(fsm))
+@pytest.mark.asyncio
+async def test_history_records_all_transitions(fsm):
+    await _run_transitions(fsm)
     # IDLE → LISTENING → THINKING → IDLE
     assert NPCState.THINKING in fsm.history
 
